@@ -8,6 +8,18 @@ using Mono.Cecil.Cil;
 
 namespace  ILRewriter
 {
+    public static class Extensions
+    {
+        public static Instruction CreateLoadInstruction(this ILProcessor self, object obj)
+        {
+            if (obj is string)
+                return self.Create(OpCodes.Ldstr, obj as string);
+            else if (obj is int)
+                return self.Create(OpCodes.Ldc_I4, (int)obj);
+
+            throw new NotSupportedException();
+        }
+    }
     public class ILCodeRewriter
     {
         private readonly string _assemblyPath;
@@ -37,21 +49,25 @@ namespace  ILRewriter
                             var constructorReference = _assemblyDefinition.MainModule.Import(preMethod);
 
                             var ilProcessor = m.Body.GetILProcessor();
-                            var firstInstruction = ilProcessor.Body.Instructions.First();
+                            var firstInstruction = ilProcessor.Body.Instructions[0];
+                            var secInstruction = ilProcessor.Body.Instructions[1];
 
-                            if (firstInstruction.OpCode == OpCodes.Call)
+                            if (secInstruction.OpCode == OpCodes.Call)
                             {
-                                var mm = firstInstruction.Operand as MethodDefinition;
+                                var mm = secInstruction.Operand as MethodDefinition;
                                 if (mm != null)
                                 {
                                     if (mm.Name == _preMethodName)
                                     {
                                         ilProcessor.Body.Instructions.RemoveAt(0);
+                                        ilProcessor.Body.Instructions.RemoveAt(0);
                                         firstInstruction = ilProcessor.Body.Instructions.First();
                                     }
                                 }
+
                             }
 
+                            ilProcessor.InsertBefore(firstInstruction, ilProcessor.CreateLoadInstruction(m.Name));                         
                             ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, constructorReference));
                         }
                         if (postMethod != null)
@@ -60,8 +76,8 @@ namespace  ILRewriter
 
                             var ilProcessor = m.Body.GetILProcessor();
                             var lastInstruction = ilProcessor.Body.Instructions.Last();
-                            var foreLastInstruction = ilProcessor.Body.Instructions[ilProcessor.Body.Instructions.Count-2];
-
+                            var foreLastInstruction = ilProcessor.Body.Instructions[ilProcessor.Body.Instructions.Count - 2];
+                            
                             if (foreLastInstruction.OpCode == OpCodes.Call)
                             {
                                 var mm = foreLastInstruction.Operand as MethodDefinition;
@@ -70,12 +86,13 @@ namespace  ILRewriter
                                     if (mm.Name == _postMethodName)
                                     {
                                         ilProcessor.Body.Instructions.RemoveAt(ilProcessor.Body.Instructions.Count - 2);
+                                        ilProcessor.Body.Instructions.RemoveAt(ilProcessor.Body.Instructions.Count - 2);
                                         lastInstruction = ilProcessor.Body.Instructions.Last();
                                     }
                                 }
                             }
-
-
+                            
+                            ilProcessor.InsertBefore(lastInstruction, ilProcessor.CreateLoadInstruction(m.Name));
                             ilProcessor.InsertBefore(lastInstruction, ilProcessor.Create(OpCodes.Call, constructorReference));
                         }
                     }                    
