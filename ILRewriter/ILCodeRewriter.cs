@@ -41,6 +41,8 @@ namespace  ILRewriter
                 {
                     foreach (var att in m.CustomAttributes)
                     {
+                        ((BaseAssemblyResolver)((Mono.Cecil.MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
+
                         var preMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _preMethodName);
                         var postMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _postMethodName);
 
