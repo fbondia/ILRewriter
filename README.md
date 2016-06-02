@@ -7,18 +7,18 @@ To intercept methods, you just have to define a custom attribute (or use the def
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
     public class MethodLogging : Attribute
     {
-        public static void PreMethod(string name, params object[] arguments)
+        public void PreMethod(string name, params object[] arguments)
         {
             Console.WriteLine(string.Format("{0} Enter method: '{1}' Parameter: '{2}'", DateTime.Now, name, string.Join(", ", arguments)));
         }
-        public static void PostMethod(string name, params object[] arguments)
+        public void PostMethod(string name, params object[] arguments)
         {
             Console.WriteLine(string.Format("{0} Leaving method: '{1}' Parameter: '{2}'", DateTime.Now, name, string.Join(", ", arguments)));
         }
     }
 ```
 
-The attribute just need to have 2 static methods with the name ```PreMethod``` and ```PostMethod``` (the name is important - see signature above). 
+The attribute just need to have 2 methods with the name ```PreMethod``` and ```PostMethod``` (the name is important - see signature above). 
 
 To enable IL rewrite, add a post build action for your project:
 
