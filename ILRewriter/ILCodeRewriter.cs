@@ -35,35 +35,38 @@ namespace ILRewriter
 
         public void RewriteMethods()
         {
-            foreach (var t in _assemblyDefinition.MainModule.Types)
+            foreach (var module in _assemblyDefinition.Modules)
             {
-                foreach (var m in t.Methods)
+                foreach (var type in module.Types)
                 {
-                    foreach (var att in m.CustomAttributes)
+                    foreach (var meth in type.Methods)
                     {
-                        ((BaseAssemblyResolver)((Mono.Cecil.MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
-
-                        var preMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _preMethodName);
-                        var postMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _postMethodName);
-
-
-
-                        var ilProcessor = m.Body.GetILProcessor();
-                        var first = ilProcessor.Body.Instructions.First();
-
-                        CreateAttrObjectInMethod(ilProcessor, first, m, att);
-
-                        if (preMethod != null)
+                        foreach (var att in meth.CustomAttributes)
                         {
-                            ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Stloc, 0));
-                            ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldloc, 0));
-                            AddInterceptCall(ilProcessor, m, preMethod, att, first);
-                        }
-                        if (postMethod != null)
-                        {
+                            ((BaseAssemblyResolver)((Mono.Cecil.MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
 
-                            ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldloc, 0));
-                            AddInterceptCall(ilProcessor, m, postMethod,att, ilProcessor.Body.Instructions.Last());
+                            var preMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _preMethodName);
+                            var postMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _postMethodName);
+
+
+
+                            var ilProcessor = meth.Body.GetILProcessor();
+                            var first = ilProcessor.Body.Instructions.First();
+
+                            CreateAttrObjectInMethod(ilProcessor, first, meth, att);
+
+                            if (preMethod != null)
+                            {
+                                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Stloc, 0));
+                                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldloc, 0));
+                                AddInterceptCall(ilProcessor, meth, preMethod, att, first);
+                            }
+                            if (postMethod != null)
+                            {
+
+                                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldloc, 0));
+                                AddInterceptCall(ilProcessor, meth, postMethod, att, ilProcessor.Body.Instructions.Last());
+                            }
                         }
                     }
                 }
