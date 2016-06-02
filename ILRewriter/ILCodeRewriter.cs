@@ -91,14 +91,14 @@ namespace  ILRewriter
                     ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4, methodParamCount));
                     ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Newarr, _assemblyDefinition.MainModule.TypeSystem.Object));
                     ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Stloc, arrayVarNr));
-
+                
                     MetadataType paramMetaData;
                     bool pointerToValueTypeVariable;
                     TypeSpecification referencedTypeSpec = null;
 
                     for (int i = 0; i < methodParamCount; i++)
                     {
-                        paramMetaData = metDef.Parameters[i].ParameterType.MetadataType;
+                        paramMetaData = m.Parameters[i].ParameterType.MetadataType;
                         if (paramMetaData == MetadataType.UIntPtr || paramMetaData == MetadataType.FunctionPointer ||
                             paramMetaData == MetadataType.IntPtr || paramMetaData == MetadataType.Pointer)
                         {
@@ -119,7 +119,7 @@ namespace  ILRewriter
 
                         pointerToValueTypeVariable = false;
 
-                        TypeReference paramType = metDef.Parameters[i].ParameterType;
+                        TypeReference paramType = m.Parameters[i].ParameterType;
                         if (paramType.IsByReference)
                         {
                             referencedTypeSpec = paramType as TypeSpecification;
