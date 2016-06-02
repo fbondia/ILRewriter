@@ -7,13 +7,18 @@ To intercept methods, you just have to define a custom attribute (or use the def
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
     public class MethodLogging : Attribute
     {
+        private Stopwatch stopWatch;
+
         public void PreMethod(string name, params object[] arguments)
         {
             Console.WriteLine(string.Format("{0} Enter method: '{1}' Parameter: '{2}'", DateTime.Now, name, string.Join(", ", arguments)));
+            stopWatch = new Stopwatch();
+            stopWatch.Start();
         }
         public void PostMethod(string name, params object[] arguments)
         {
-            Console.WriteLine(string.Format("{0} Leaving method: '{1}' Parameter: '{2}'", DateTime.Now, name, string.Join(", ", arguments)));
+            stopWatch.Stop();
+            Console.WriteLine(string.Format("{0} Leaving method: '{1}' Parameter: '{2}' Duration: '{3} ms'", DateTime.Now, name, string.Join(", ", arguments), stopWatch.ElapsedMilliseconds));
         }
     }
 ```
@@ -41,5 +46,5 @@ Now the output in the console will look like this:
 ```
 02.06.2016 03:34:41 Enter method: 'DoSomething' Parameter: 'einText, 3'
 DoSomething() method body. Text: einText Zahl: 3
-02.06.2016 03:34:41 Leaving method: 'DoSomething' Parameter: 'einText, 3'
+02.06.2016 03:34:41 Leaving method: 'DoSomething' Parameter: 'einText, 3' Duration: '1 ms'
 ```
