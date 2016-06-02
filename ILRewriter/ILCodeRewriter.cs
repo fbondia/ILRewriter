@@ -46,37 +46,55 @@ namespace ILRewriter
                         var preMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _preMethodName);
                         var postMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _postMethodName);
 
+
+
+                        var ilProcessor = m.Body.GetILProcessor();
+                        var first = ilProcessor.Body.Instructions.First();
+
+                        CreateAttrObjectInMethod(ilProcessor, first, m, att);
+
                         if (preMethod != null)
                         {
-                            AddInterceptCall(m, preMethod, true);
+                            ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Stloc, 0));
+                            ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldloc, 0));
+                            AddInterceptCall(ilProcessor, m, preMethod, att, first);
                         }
                         if (postMethod != null)
                         {
-                            AddInterceptCall(m, postMethod, false);
+
+                            ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldloc, 0));
+                            AddInterceptCall(ilProcessor, m, postMethod,att, ilProcessor.Body.Instructions.Last());
                         }
                     }
                 }
             }
         }
 
-        private void AddInterceptCall(MethodDefinition methDef, MethodDefinition interceptMethDef, bool prepend)
+        private void CreateAttrObjectInMethod(ILProcessor ilProcessor, Instruction firstInstruction, MethodDefinition methDef, CustomAttribute att)
         {
+            methDef.Body.InitLocals = true;
 
+            methDef.Body.Variables.Add(new VariableDefinition(methDef.CustomAttributes[0].AttributeType));
+
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Newobj, methDef.Module.Import(att.Constructor)));
+
+        }
+
+        private void AddInterceptCall(ILProcessor ilProcessor, MethodDefinition methDef, MethodDefinition interceptMethDef, CustomAttribute att, Instruction insertBefore)
+        {
+            //            CreateAttrObjectInMethod(ilProcessor, insertBefore, methDef, att);
             var methRef = _assemblyDefinition.MainModule.Import(interceptMethDef);
 
-            var ilProcessor = methDef.Body.GetILProcessor();
-            Instruction firstInstruction = null;
+           //methDef.Body.InitLocals = true;
+           //
+           //methDef.Body.Variables.Add(new VariableDefinition(methDef.CustomAttributes[0].AttributeType));
+           //
+           //ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Newobj, methDef.Module.Import(att.Constructor)));
+           //ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Stloc, 0));
+           //ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldloc, 0));
 
-            if (prepend)
-            {
-                firstInstruction = ilProcessor.Body.Instructions.First();
-            }
-            else
-            {
-                firstInstruction = ilProcessor.Body.Instructions.Last();
-            }
 
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.CreateLoadInstruction(methDef.Name));
+            ilProcessor.InsertBefore(insertBefore, ilProcessor.CreateLoadInstruction(methDef.Name));
 
             int methodParamCount = methDef.Parameters.Count;
             int arrayVarNr = methDef.Body.Variables.Count;
@@ -88,9 +106,9 @@ namespace ILRewriter
 
                 methDef.Body.InitLocals = true;
 
-                ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4, methodParamCount));
-                ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Newarr, _assemblyDefinition.MainModule.TypeSystem.Object));
-                ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Stloc, arrayVarNr));
+                ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldc_I4, methodParamCount));
+                ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Newarr, _assemblyDefinition.MainModule.TypeSystem.Object));
+                ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Stloc, arrayVarNr));
                 
                 bool pointerToValueTypeVariable;
                 TypeSpecification referencedTypeSpec = null;
@@ -104,16 +122,16 @@ namespace ILRewriter
                         break;
                     }
 
-                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldloc, arrayVarNr));
-                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldc_I4, i));
+                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldloc, arrayVarNr));
+                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldc_I4, i));
 
                     if (methDef.IsStatic)
                     {
-                        ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldarg, i));
+                        ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldarg, i));
                     }
                     else
                     {
-                        ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldarg, i + 1));
+                        ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldarg, i + 1));
                     }
 
                     pointerToValueTypeVariable = false;
@@ -129,67 +147,67 @@ namespace ILRewriter
                             {
                                 case MetadataType.Boolean:
                                 case MetadataType.SByte:
-                                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldind_I1));
+                                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldind_I1));
                                     pointerToValueTypeVariable = true;
                                     break;
 
                                 case MetadataType.Int16:
-                                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldind_I2));
+                                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldind_I2));
                                     pointerToValueTypeVariable = true;
                                     break;
 
                                 case MetadataType.Int32:
-                                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldind_I4));
+                                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldind_I4));
                                     pointerToValueTypeVariable = true;
                                     break;
 
                                 case MetadataType.Int64:
                                 case MetadataType.UInt64:
-                                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldind_I8));
+                                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldind_I8));
                                     pointerToValueTypeVariable = true;
                                     break;
 
                                 case MetadataType.Byte:
-                                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldind_U1));
+                                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldind_U1));
                                     pointerToValueTypeVariable = true;
                                     break;
 
                                 case MetadataType.UInt16:
                                 case MetadataType.Char:
-                                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldind_U2));
+                                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldind_U2));
                                     pointerToValueTypeVariable = true;
                                     break;
 
                                 case MetadataType.UInt32:
-                                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldind_U4));
+                                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldind_U4));
                                     pointerToValueTypeVariable = true;
                                     break;
 
                                 case MetadataType.Single:
-                                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldind_R4));
+                                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldind_R4));
                                     pointerToValueTypeVariable = true;
                                     break;
 
                                 case MetadataType.Double:
-                                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldind_R8));
+                                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldind_R8));
                                     pointerToValueTypeVariable = true;
                                     break;
 
                                 case MetadataType.IntPtr:
                                 case MetadataType.UIntPtr:
-                                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldind_I));
+                                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldind_I));
                                     pointerToValueTypeVariable = true;
                                     break;
 
                                 default:
                                     if (referencedTypeSpec.ElementType.IsValueType)
                                     {
-                                        ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldobj, referencedTypeSpec.ElementType));
+                                        ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldobj, referencedTypeSpec.ElementType));
                                         pointerToValueTypeVariable = true;
                                     }
                                     else
                                     {
-                                        ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldind_Ref));
+                                        ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldind_Ref));
                                         pointerToValueTypeVariable = false;
                                     }
                                     break;
@@ -205,21 +223,24 @@ namespace ILRewriter
                     {
                         if (pointerToValueTypeVariable)
                         {
-                            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Box, referencedTypeSpec.ElementType));
+                            ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Box, referencedTypeSpec.ElementType));
                         }
                         else
                         {
-                            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Box, paramType));
+                            ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Box, paramType));
                         }
                     }
-                    ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Stelem_Ref));
+                    ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Stelem_Ref));
                 }
 
 
-                ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldloc, arrayVarNr));
+                ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldloc, arrayVarNr));
             }
 
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, methRef));
+            // ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, methRef));
+
+
+            ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Callvirt, methDef.Module.Import(interceptMethDef)));
 
         }
 
