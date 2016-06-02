@@ -19,7 +19,7 @@ namespace ILRewriterDemo
         [MethodLogging]
         static void DoSomething(string text, int zahl)
         {
-            Console.WriteLine("DoSomething() method body. Text: " + text + " Zahl: ");
+            Console.WriteLine("DoSomething() method body. Text: " + text + " Zahl: " + zahl);
         }
     }
 }
