@@ -1,6 +1,15 @@
 # ILRewriter
 Rewrites .NET IL to support AOP features like custom attributes (using Mono.Cecil).
 
+###Configuration
+
+To enable IL rewrite, add a post build action for your project:
+
+```
+ILRewriter.exe "$(TargetPath)"
+```
+
+###Method Attributes
 To intercept methods, you just have to define a custom attribute (or use the default ones from the library):
 
 ```csharp
@@ -25,12 +34,6 @@ To intercept methods, you just have to define a custom attribute (or use the def
 
 The attribute just need to have 2 methods with the name ```PreMethod``` and ```PostMethod``` (the name is important - see signature above). 
 
-To enable IL rewrite, add a post build action for your project:
-
-```
-ILRewriter.exe "$(TargetPath)"
-```
-
 Now you can add your custom attribute to any method in your assembly. (e.g. for enabling logging):
 
 ```csharp
@@ -48,3 +51,31 @@ Now the output in the console will look like this:
 DoSomething() method body. Text: einText Zahl: 3
 02.06.2016 03:34:41 Leaving method: 'DoSomething' Parameter: 'einText, 3' Duration: '1 ms'
 ```
+
+###Parameter Attributes
+To process parameters, you just have to define a custom attribute (or use the default ones from the library):
+
+```csharp
+    [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
+    public class NotNull : Attribute
+    {
+        public static void Process(string name, object value)
+        {
+            if(value == null)
+            {
+                throw new ArgumentNullException(name, string.Format("Parameter '{0}' is null.", name));
+            }
+        }
+    }
+```
+
+Now you can add your custom attribute to any parameter in your assembly. (e.g. for null checking):
+
+```csharp
+        static void DoSomething([NotNull]string text, int zahl)
+        {
+            Console.WriteLine("DoSomething() method body. Text: " + text + " Zahl: " + zahl);
+        }
+```
+
+If you now call ```DoSomething(null, 3)``` (first parameter is null), a ArgumentNullException will be thrown (according to the custom  attribute).
