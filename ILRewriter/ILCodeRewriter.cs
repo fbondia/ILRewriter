@@ -87,8 +87,9 @@ namespace ILRewriter
                                 {
                                     var ilProcessor = meth.Body.GetILProcessor();
                                     var first = ilProcessor.Body.Instructions.First();
-                                    
 
+
+                                    ilProcessor.InsertBefore(first, ilProcessor.CreateLoadInstruction(meth.Name));
                                     ilProcessor.InsertBefore(first, ilProcessor.CreateLoadInstruction(para.Name));
 
                                     if (meth.IsStatic)
