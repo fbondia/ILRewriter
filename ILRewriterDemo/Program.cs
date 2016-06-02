@@ -11,13 +11,13 @@ namespace ILRewriterDemo
     {
         static void Main(string[] args)
         {
-            DoSomething("einText", 4);
+            DoSomething(null, 4);
 
             Console.ReadLine();
         }
 
         [MethodLogging]
-        static void DoSomething(string text, int tt)
+        static void DoSomething([NotNull]string text, int tt)
         {
             Console.WriteLine("DoSomething() method body. Text: " + text + " Zahl: "+tt.ToString());
         }

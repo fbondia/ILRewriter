@@ -27,6 +27,9 @@ namespace ILRewriter
 
         private const string _preMethodName = "PreMethod";
         private const string _postMethodName = "PostMethod";
+
+        private const string _procMethodName = "Process";
+
         public ILCodeRewriter(string assemblyPath)
         {
             _assemblyPath = assemblyPath;
@@ -41,6 +44,9 @@ namespace ILRewriter
                 {
                     foreach (var meth in type.Methods)
                     {
+                        int argCount = 0;
+                        
+
                         foreach (var att in meth.CustomAttributes)
                         {
                             ((BaseAssemblyResolver)((MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
@@ -55,16 +61,49 @@ namespace ILRewriter
 
                             if (preMethod != null)
                             {
-                                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Stloc, 0));
-                                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldloc, 0));
+                                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Stloc, argCount));
+                                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldloc, argCount));
+                                argCount++;
                                 AddInterceptCall(ilProcessor, meth, preMethod, att, first);
                             }
+                            
                             if (postMethod != null)
                             {
 
                                 ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldloc, 0));
                                 AddInterceptCall(ilProcessor, meth, postMethod, att, ilProcessor.Body.Instructions.Last());
                             }
+                        }
+
+                        int currPara = 0;
+                        foreach (var para in meth.Parameters)
+                        {
+                            foreach (var att in para.CustomAttributes)
+                            {
+                                ((BaseAssemblyResolver)((MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
+
+                                var processMeth = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _procMethodName);
+                                if (processMeth != null)
+                                {
+                                    var ilProcessor = meth.Body.GetILProcessor();
+                                    var first = ilProcessor.Body.Instructions.First();
+                                    
+
+                                    ilProcessor.InsertBefore(first, ilProcessor.CreateLoadInstruction(para.Name));
+
+                                    if (meth.IsStatic)
+                                    {
+                                        ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldarg, 0));
+                                    }
+                                    else
+                                    {
+                                        ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldarg, 1));
+                                    }
+
+                                    ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Call, meth.Module.ImportReference(processMeth)));
+                                }
+                            }
+                            currPara++;
                         }
                     }
                 }
@@ -75,7 +114,7 @@ namespace ILRewriter
         {
             methDef.Body.InitLocals = true;
 
-            methDef.Body.Variables.Add(new VariableDefinition(methDef.CustomAttributes[0].AttributeType));
+            methDef.Body.Variables.Add(new VariableDefinition(att.AttributeType));
 
             ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Newobj, methDef.Module.ImportReference(att.Constructor)));
 
