@@ -43,13 +43,11 @@ namespace ILRewriter
                     {
                         foreach (var att in meth.CustomAttributes)
                         {
-                            ((BaseAssemblyResolver)((Mono.Cecil.MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
+                            ((BaseAssemblyResolver)((MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
 
                             var preMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _preMethodName);
                             var postMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _postMethodName);
-
-
-
+                            
                             var ilProcessor = meth.Body.GetILProcessor();
                             var first = ilProcessor.Body.Instructions.First();
 
@@ -79,24 +77,14 @@ namespace ILRewriter
 
             methDef.Body.Variables.Add(new VariableDefinition(methDef.CustomAttributes[0].AttributeType));
 
-            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Newobj, methDef.Module.Import(att.Constructor)));
+            ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Newobj, methDef.Module.ImportReference(att.Constructor)));
 
         }
 
         private void AddInterceptCall(ILProcessor ilProcessor, MethodDefinition methDef, MethodDefinition interceptMethDef, CustomAttribute att, Instruction insertBefore)
         {
-            //            CreateAttrObjectInMethod(ilProcessor, insertBefore, methDef, att);
-            var methRef = _assemblyDefinition.MainModule.Import(interceptMethDef);
-
-           //methDef.Body.InitLocals = true;
-           //
-           //methDef.Body.Variables.Add(new VariableDefinition(methDef.CustomAttributes[0].AttributeType));
-           //
-           //ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Newobj, methDef.Module.Import(att.Constructor)));
-           //ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Stloc, 0));
-           //ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Ldloc, 0));
-
-
+            var methRef = _assemblyDefinition.MainModule.ImportReference(interceptMethDef);
+            
             ilProcessor.InsertBefore(insertBefore, ilProcessor.CreateLoadInstruction(methDef.Name));
 
             int methodParamCount = methDef.Parameters.Count;
@@ -239,11 +227,8 @@ namespace ILRewriter
 
                 ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldloc, arrayVarNr));
             }
-
-            // ilProcessor.InsertBefore(firstInstruction, ilProcessor.Create(OpCodes.Call, methRef));
-
-
-            ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Callvirt, methDef.Module.Import(interceptMethDef)));
+            
+            ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Callvirt, methDef.Module.ImportReference(interceptMethDef)));
 
         }
 
