@@ -59,11 +59,11 @@ To process parameters, you just have to define a custom attribute (or use the de
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     public class NotNull : Attribute
     {
-        public static void Process(string name, object value)
+        public static void Process(string methodName, string name, object value)
         {
             if(value == null)
             {
-                throw new ArgumentNullException(name, string.Format("Parameter '{0}' is null.", name));
+                throw new ArgumentNullException(name, string.Format("Method '{0}' Parameter '{1}' is null.",methodName, name));
             }
         }
     }
