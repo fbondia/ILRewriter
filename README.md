@@ -36,10 +36,10 @@ Now you can add your custom attribute to any method in your assembly. (e.g. for 
         }
 ```
 
-Now the output in the consoe will look like this:
+Now the output in the console will look like this:
 
 ```
-02.06.2016 01:34:41 Enter method: 'DoSomething' Parameter: 'einText, 3'
+02.06.2016 03:34:41 Enter method: 'DoSomething' Parameter: 'einText, 3'
 DoSomething() method body. Text: einText Zahl: 3
-02.06.2016 01:34:41 Leaving method: 'DoSomething' Parameter: 'einText, 3'
+02.06.2016 03:34:41 Leaving method: 'DoSomething' Parameter: 'einText, 3'
 ```
