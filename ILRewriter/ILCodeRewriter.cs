@@ -66,6 +66,8 @@ namespace ILRewriter
                                 argCount++;
                                 AddInterceptCall(ilProcessor, meth, preMethod, att, first);
                             }
+
+                            
                             
                             if (postMethod != null)
                             {
@@ -73,7 +75,30 @@ namespace ILRewriter
                                 ilProcessor.InsertBefore(ilProcessor.Body.Instructions.Last(), ilProcessor.Create(OpCodes.Ldloc, 0));
                                 AddInterceptCall(ilProcessor, meth, postMethod, att, ilProcessor.Body.Instructions.Last());
                             }
+
+                            var retInstruction = FixReturns(meth);
+                            
+                            var firstInstruction = meth.Body.Instructions[2];
+
+                            var beforeReturn = Instruction.Create(OpCodes.Nop);
+                            ilProcessor.InsertBefore(retInstruction, beforeReturn);
+
+                            ilProcessor.InsertBefore(retInstruction, Instruction.Create(OpCodes.Endfinally));
+
+                            var handler = new ExceptionHandler(ExceptionHandlerType.Finally)
+                            {
+                                TryStart = firstInstruction,
+                                TryEnd = beforeReturn,
+                                HandlerStart = beforeReturn,
+                                HandlerEnd = retInstruction,
+                            };
+
+                            meth.Body.ExceptionHandlers.Add(handler);
+                            meth.Body.InitLocals = true;
                         }
+
+
+
 
                         int currPara = 0;
                         foreach (var para in meth.Parameters)
@@ -108,6 +133,47 @@ namespace ILRewriter
                         }
                     }
                 }
+            }
+        }
+
+        Instruction FixReturns(MethodDefinition Method)
+        {
+            if (Method.ReturnType == Method.Module.TypeSystem.Void)
+            {
+                var instructions = Method.Body.Instructions;
+                var lastRet = Instruction.Create(OpCodes.Ret);
+                instructions.Add(lastRet);
+
+                for (var index = 0; index < Method.Body.Instructions.Count - 1; index++)
+                {
+                    var instruction = instructions[index];
+                    if (instruction.OpCode == OpCodes.Ret)
+                    {
+                        instructions[index] = Instruction.Create(OpCodes.Leave, lastRet);
+                    }
+                }
+                return lastRet;
+            }
+            else
+            {
+                var instructions = Method.Body.Instructions;
+                var returnVariable = new VariableDefinition("methodTimerReturn", Method.ReturnType);
+                Method.Body.Variables.Add(returnVariable);
+                var lastLd = Instruction.Create(OpCodes.Ldloc, returnVariable);
+                instructions.Add(lastLd);
+                instructions.Add(Instruction.Create(OpCodes.Ret));
+
+                for (var index = 0; index < instructions.Count - 2; index++)
+                {
+                    var instruction = instructions[index];
+                    if (instruction.OpCode == OpCodes.Ret)
+                    {
+                        instructions[index] = Instruction.Create(OpCodes.Leave, lastLd);
+                        instructions.Insert(index, Instruction.Create(OpCodes.Stloc, returnVariable));
+                        index++;
+                    }
+                }
+                return lastLd;
             }
         }
 
