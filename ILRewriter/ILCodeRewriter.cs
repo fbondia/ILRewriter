@@ -42,47 +42,47 @@ namespace ILRewriter
             {
                 foreach (var type in module.Types)
                 {
-                    foreach (var meth in type.Methods)
+                    foreach (var currentMethod in type.Methods)
                     {
-                        if (!meth.HasCustomAttributes)
+                        if (!currentMethod.HasCustomAttributes)
                         {
                             continue;
                         }
 
-                        var ilProcessor = meth.Body.GetILProcessor();
+                        var ilProcessor = currentMethod.Body.GetILProcessor();
                         var firstUserInstruction = ilProcessor.Body.Instructions.First();
                         
-                        foreach (var att in meth.CustomAttributes)
+                        foreach (var att in currentMethod.CustomAttributes)
                         {
                             ((BaseAssemblyResolver)((MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
                         }
 
 
-                        int argCount = 0;
-                        foreach (var att in meth.CustomAttributes)
+                        int currentAttribute = 0;
+                        foreach (var att in currentMethod.CustomAttributes)
                         {                           
-                            meth.Body.InitLocals = true;
-                            meth.Body.Variables.Add(new VariableDefinition(att.AttributeType));
+                            currentMethod.Body.InitLocals = true;
+                            currentMethod.Body.Variables.Add(new VariableDefinition(att.AttributeType));
 
-                            ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Newobj, meth.Module.ImportReference(att.Constructor)));
+                            ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Newobj, currentMethod.Module.ImportReference(att.Constructor)));
 
-                            ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Stloc, argCount));
-                            argCount++;
+                            ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Stloc, currentAttribute));
+                            currentAttribute++;
                         }
-                        argCount = 0;
-                        foreach(var att in meth.CustomAttributes)
+                        currentAttribute = 0;
+                        foreach(var att in currentMethod.CustomAttributes)
                         {
                             var preMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _preMethodName);
                             if (preMethod != null)
                             {
-                                ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Ldloc, argCount));
-                                argCount++;
-                                AddInterceptCall(ilProcessor, meth, preMethod, att, firstUserInstruction);
+                                ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Ldloc, currentAttribute));
+                                currentAttribute++;
+                                AddInterceptCall(ilProcessor, currentMethod, preMethod, att, firstUserInstruction);
                             }
                         }
 
-                        int currPara = 0;
-                        foreach (var para in meth.Parameters)
+                        int currentParameter = 0;
+                        foreach (var para in currentMethod.Parameters)
                         {
                             foreach (var att in para.CustomAttributes)
                             {
@@ -91,63 +91,54 @@ namespace ILRewriter
                                 var processMeth = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _procMethodName);
                                 if (processMeth != null)
                                 {
-                                    ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.CreateLoadInstruction(meth.Name));
+                                    ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.CreateLoadInstruction(currentMethod.Name));
                                     ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.CreateLoadInstruction(para.Name));
                                     
-                                    ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Ldarg, currPara));
+                                    ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Ldarg, currentParameter));
 
-                                    ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Call, meth.Module.ImportReference(processMeth)));
+                                    ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Call, currentMethod.Module.ImportReference(processMeth)));
                                 }
                             }
-                            currPara++;
+                            currentParameter++;
+                        }
+                        
+
+                        var returnInstruction = NormalizeReturns(currentMethod);
+                        
+                        var tryStart = currentMethod.Body.Instructions[2 * currentMethod.CustomAttributes.Count];
+                        var beforeReturnInstruction = Instruction.Create(OpCodes.Nop);
+                        ilProcessor.InsertBefore(returnInstruction, beforeReturnInstruction);
+
+                        currentAttribute = 0;
+                        foreach (var att in currentMethod.CustomAttributes)
+                        {
+                            var postMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _postMethodName);
+                            if (postMethod != null)
+                            {
+                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Ldloc, currentAttribute));
+                                currentAttribute++;
+                                AddInterceptCall(ilProcessor, currentMethod, postMethod, att, returnInstruction);
+                            }
                         }
 
-
-
-
-                        var retInstruction = FixReturns(meth);
-                        
-                        var firstInstruction = meth.Body.Instructions[2 * meth.CustomAttributes.Count];
-                        
-                        var beforeReturn = Instruction.Create(OpCodes.Nop);
-                        ilProcessor.InsertBefore(retInstruction, beforeReturn);
-
-                        argCount = 0;
-                        foreach (var att in meth.CustomAttributes)
-                       {
-                           var postMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _postMethodName);
-                           if (postMethod != null)
-                           {
-                               ilProcessor.InsertBefore(retInstruction, ilProcessor.Create(OpCodes.Ldloc, argCount));
-                                argCount++;
-                               AddInterceptCall(ilProcessor, meth, postMethod, att, retInstruction);
-                           }
-                       }
-
-                        ilProcessor.InsertBefore(retInstruction, Instruction.Create(OpCodes.Endfinally));
+                        ilProcessor.InsertBefore(returnInstruction, Instruction.Create(OpCodes.Endfinally));
                         
                         var handler = new ExceptionHandler(ExceptionHandlerType.Finally)
                         {
-                            TryStart = firstInstruction,
-                            TryEnd = beforeReturn,
-                            HandlerStart = beforeReturn,
-                            HandlerEnd = retInstruction,
+                            TryStart = tryStart,
+                            TryEnd = beforeReturnInstruction,
+                            HandlerStart = beforeReturnInstruction,
+                            HandlerEnd = returnInstruction,
                         };
                         
-                        meth.Body.ExceptionHandlers.Add(handler);
-                        meth.Body.InitLocals = true;
-
-
-
-
-
-                        
+                        currentMethod.Body.ExceptionHandlers.Add(handler);
+                        currentMethod.Body.InitLocals = true;                        
                     }
                 }
             }
         }
 
-        Instruction FixReturns(MethodDefinition Method)
+        Instruction NormalizeReturns(MethodDefinition Method)
         {
             if (Method.ReturnType == Method.Module.TypeSystem.Void)
             {
