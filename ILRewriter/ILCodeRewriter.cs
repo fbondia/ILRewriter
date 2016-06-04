@@ -67,21 +67,23 @@ namespace ILRewriter
                                 AddInterceptCall(ilProcessor, meth, preMethod, att, first);
                             }
 
-                            
-                            
-                            if (postMethod != null)
-                            {
-
-                                ilProcessor.InsertBefore(ilProcessor.Body.Instructions.Last(), ilProcessor.Create(OpCodes.Ldloc, 0));
-                                AddInterceptCall(ilProcessor, meth, postMethod, att, ilProcessor.Body.Instructions.Last());
-                            }
-
+                           
                             var retInstruction = FixReturns(meth);
                             
                             var firstInstruction = meth.Body.Instructions[2];
 
                             var beforeReturn = Instruction.Create(OpCodes.Nop);
                             ilProcessor.InsertBefore(retInstruction, beforeReturn);
+
+
+                            if (postMethod != null)
+                            {
+
+                                ilProcessor.InsertBefore(retInstruction, ilProcessor.Create(OpCodes.Ldloc, 0));
+                                AddInterceptCall(ilProcessor, meth, postMethod, att, retInstruction);
+                            }
+
+
 
                             ilProcessor.InsertBefore(retInstruction, Instruction.Create(OpCodes.Endfinally));
 
