@@ -44,95 +44,110 @@ namespace ILRewriter
                 {
                     foreach (var meth in type.Methods)
                     {
-                        int argCount = 0;
-                        
+                        if (!meth.HasCustomAttributes)
+                        {
+                            continue;
+                        }
 
+                        var ilProcessor = meth.Body.GetILProcessor();
+                        var firstUserInstruction = ilProcessor.Body.Instructions.First();
+                        
                         foreach (var att in meth.CustomAttributes)
                         {
                             ((BaseAssemblyResolver)((MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
+                        }
 
+
+                        int argCount = 0;
+                        foreach (var att in meth.CustomAttributes)
+                        {                           
+                            meth.Body.InitLocals = true;
+                            meth.Body.Variables.Add(new VariableDefinition(att.AttributeType));
+
+                            ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Newobj, meth.Module.ImportReference(att.Constructor)));
+
+                            ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Stloc, argCount));
+                            argCount++;
+                        }
+                        argCount = 0;
+                        foreach(var att in meth.CustomAttributes)
+                        {
                             var preMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _preMethodName);
-                            var postMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _postMethodName);
-                            
-                            var ilProcessor = meth.Body.GetILProcessor();
-                            var first = ilProcessor.Body.Instructions.First();
-
-                            CreateAttrObjectInMethod(ilProcessor, first, meth, att);
-
                             if (preMethod != null)
                             {
-                                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Stloc, argCount));
-                                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldloc, argCount));
+                                ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Ldloc, argCount));
                                 argCount++;
-                                AddInterceptCall(ilProcessor, meth, preMethod, att, first);
+                                AddInterceptCall(ilProcessor, meth, preMethod, att, firstUserInstruction);
                             }
-
-                           
-                            var retInstruction = FixReturns(meth);
-                            
-                            var firstInstruction = meth.Body.Instructions[2];
-
-                            var beforeReturn = Instruction.Create(OpCodes.Nop);
-                            ilProcessor.InsertBefore(retInstruction, beforeReturn);
-
-
-                            if (postMethod != null)
-                            {
-
-                                ilProcessor.InsertBefore(retInstruction, ilProcessor.Create(OpCodes.Ldloc, 0));
-                                AddInterceptCall(ilProcessor, meth, postMethod, att, retInstruction);
-                            }
-
-
-
-                            ilProcessor.InsertBefore(retInstruction, Instruction.Create(OpCodes.Endfinally));
-
-                            var handler = new ExceptionHandler(ExceptionHandlerType.Finally)
-                            {
-                                TryStart = firstInstruction,
-                                TryEnd = beforeReturn,
-                                HandlerStart = beforeReturn,
-                                HandlerEnd = retInstruction,
-                            };
-
-                            meth.Body.ExceptionHandlers.Add(handler);
-                            meth.Body.InitLocals = true;
                         }
 
+                        var retInstruction = FixReturns(meth);
+                        
+                        var firstInstruction = meth.Body.Instructions[2 * meth.CustomAttributes.Count];
+                        
+                        var beforeReturn = Instruction.Create(OpCodes.Nop);
+                        ilProcessor.InsertBefore(retInstruction, beforeReturn);
 
+                        argCount = 0;
+                        foreach (var att in meth.CustomAttributes)
+                       {
+                           var postMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _postMethodName);
+                           if (postMethod != null)
+                           {
+                               ilProcessor.InsertBefore(retInstruction, ilProcessor.Create(OpCodes.Ldloc, argCount));
+                                argCount++;
+                               AddInterceptCall(ilProcessor, meth, postMethod, att, retInstruction);
+                           }
+                       }
 
-
-                        int currPara = 0;
-                        foreach (var para in meth.Parameters)
+                        ilProcessor.InsertBefore(retInstruction, Instruction.Create(OpCodes.Endfinally));
+                        
+                        var handler = new ExceptionHandler(ExceptionHandlerType.Finally)
                         {
-                            foreach (var att in para.CustomAttributes)
-                            {
-                                ((BaseAssemblyResolver)((MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
+                            TryStart = firstInstruction,
+                            TryEnd = beforeReturn,
+                            HandlerStart = beforeReturn,
+                            HandlerEnd = retInstruction,
+                        };
+                        
+                        meth.Body.ExceptionHandlers.Add(handler);
+                        meth.Body.InitLocals = true;
 
-                                var processMeth = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _procMethodName);
-                                if (processMeth != null)
-                                {
-                                    var ilProcessor = meth.Body.GetILProcessor();
-                                    var first = ilProcessor.Body.Instructions.First();
 
 
-                                    ilProcessor.InsertBefore(first, ilProcessor.CreateLoadInstruction(meth.Name));
-                                    ilProcessor.InsertBefore(first, ilProcessor.CreateLoadInstruction(para.Name));
 
-                                    if (meth.IsStatic)
-                                    {
-                                        ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldarg, 0));
-                                    }
-                                    else
-                                    {
-                                        ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldarg, 1));
-                                    }
 
-                                    ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Call, meth.Module.ImportReference(processMeth)));
-                                }
-                            }
-                            currPara++;
-                        }
+                        //int currPara = 0;
+                        //foreach (var para in meth.Parameters)
+                        //{
+                        //    foreach (var att in para.CustomAttributes)
+                        //    {
+                        //        ((BaseAssemblyResolver)((MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
+                        //
+                        //        var processMeth = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _procMethodName);
+                        //        if (processMeth != null)
+                        //        {
+                        //            var ilProcessor = meth.Body.GetILProcessor();
+                        //            var first = ilProcessor.Body.Instructions.First();
+                        //
+                        //
+                        //            ilProcessor.InsertBefore(first, ilProcessor.CreateLoadInstruction(meth.Name));
+                        //            ilProcessor.InsertBefore(first, ilProcessor.CreateLoadInstruction(para.Name));
+                        //
+                        //            if (meth.IsStatic)
+                        //            {
+                        //                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldarg, 0));
+                        //            }
+                        //            else
+                        //            {
+                        //                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldarg, 1));
+                        //            }
+                        //
+                        //            ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Call, meth.Module.ImportReference(processMeth)));
+                        //        }
+                        //    }
+                        //    currPara++;
+                        //}
                     }
                 }
             }
@@ -189,10 +204,10 @@ namespace ILRewriter
 
         }
 
-        private void AddInterceptCall(ILProcessor ilProcessor, MethodDefinition methDef, MethodDefinition interceptMethDef, CustomAttribute att, Instruction insertBefore)
+        private Instruction AddInterceptCall(ILProcessor ilProcessor, MethodDefinition methDef, MethodDefinition interceptMethDef, CustomAttribute att, Instruction insertBefore)
         {
             var methRef = _assemblyDefinition.MainModule.ImportReference(interceptMethDef);
-            
+
             ilProcessor.InsertBefore(insertBefore, ilProcessor.CreateLoadInstruction(methDef.Name));
 
             int methodParamCount = methDef.Parameters.Count;
@@ -208,7 +223,7 @@ namespace ILRewriter
                 ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldc_I4, methodParamCount));
                 ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Newarr, _assemblyDefinition.MainModule.TypeSystem.Object));
                 ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Stloc, arrayVarNr));
-                
+
                 bool pointerToValueTypeVariable;
                 TypeSpecification referencedTypeSpec = null;
 
@@ -335,9 +350,9 @@ namespace ILRewriter
 
                 ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Ldloc, arrayVarNr));
             }
-            
-            ilProcessor.InsertBefore(insertBefore, ilProcessor.Create(OpCodes.Callvirt, methDef.Module.ImportReference(interceptMethDef)));
-
+            var ins = ilProcessor.Create(OpCodes.Callvirt, methDef.Module.ImportReference(interceptMethDef));
+            ilProcessor.InsertBefore(insertBefore, ins);
+            return ins;
         }
 
         public void Reweave()
