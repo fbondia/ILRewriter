@@ -17,7 +17,7 @@ namespace ILRewriterDemo
         }
 
         [MethodLogging]
-        static void DoSomething([NotNull]string text, int tt)
+        static void DoSomething(string text, int tt)
         {
             Console.WriteLine("DoSomething() method body. Text: " + text + " Zahl: "+tt.ToString());
         }

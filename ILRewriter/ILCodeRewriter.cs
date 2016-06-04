@@ -70,7 +70,7 @@ namespace ILRewriter
                             if (postMethod != null)
                             {
 
-                                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldloc, 0));
+                                ilProcessor.InsertBefore(ilProcessor.Body.Instructions.Last(), ilProcessor.Create(OpCodes.Ldloc, 0));
                                 AddInterceptCall(ilProcessor, meth, postMethod, att, ilProcessor.Body.Instructions.Last());
                             }
                         }
