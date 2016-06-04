@@ -16,8 +16,8 @@ namespace ILRewriterDemo
             Console.ReadLine();
         }
 
-        [MethodLogging]
-        static void DoSomething(string text, int tt)
+        [MethodLogging, MethodCall]
+        static void DoSomething([NotNullOrEmpty]string text, [NotNull]int tt)
         {
             Console.WriteLine("DoSomething() method body. Text: " + text + " Zahl: "+tt.ToString());
         }

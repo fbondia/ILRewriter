@@ -81,6 +81,30 @@ namespace ILRewriter
                             }
                         }
 
+                        int currPara = 0;
+                        foreach (var para in meth.Parameters)
+                        {
+                            foreach (var att in para.CustomAttributes)
+                            {
+                                ((BaseAssemblyResolver)((MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
+
+                                var processMeth = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _procMethodName);
+                                if (processMeth != null)
+                                {
+                                    ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.CreateLoadInstruction(meth.Name));
+                                    ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.CreateLoadInstruction(para.Name));
+                                    
+                                    ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Ldarg, currPara));
+
+                                    ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Call, meth.Module.ImportReference(processMeth)));
+                                }
+                            }
+                            currPara++;
+                        }
+
+
+
+
                         var retInstruction = FixReturns(meth);
                         
                         var firstInstruction = meth.Body.Instructions[2 * meth.CustomAttributes.Count];
@@ -117,37 +141,7 @@ namespace ILRewriter
 
 
 
-                        //int currPara = 0;
-                        //foreach (var para in meth.Parameters)
-                        //{
-                        //    foreach (var att in para.CustomAttributes)
-                        //    {
-                        //        ((BaseAssemblyResolver)((MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
-                        //
-                        //        var processMeth = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _procMethodName);
-                        //        if (processMeth != null)
-                        //        {
-                        //            var ilProcessor = meth.Body.GetILProcessor();
-                        //            var first = ilProcessor.Body.Instructions.First();
-                        //
-                        //
-                        //            ilProcessor.InsertBefore(first, ilProcessor.CreateLoadInstruction(meth.Name));
-                        //            ilProcessor.InsertBefore(first, ilProcessor.CreateLoadInstruction(para.Name));
-                        //
-                        //            if (meth.IsStatic)
-                        //            {
-                        //                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldarg, 0));
-                        //            }
-                        //            else
-                        //            {
-                        //                ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Ldarg, 1));
-                        //            }
-                        //
-                        //            ilProcessor.InsertBefore(first, ilProcessor.Create(OpCodes.Call, meth.Module.ImportReference(processMeth)));
-                        //        }
-                        //    }
-                        //    currPara++;
-                        //}
+                        
                     }
                 }
             }
