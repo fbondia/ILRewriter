@@ -23,6 +23,11 @@ namespace ILRewriterAttributes
             stopWatch.Stop();
             Console.WriteLine(string.Format("{0} Leaving method: '{1}' Parameter: '{2}' Duration: '{3} ms'", DateTime.Now, name, string.Join(", ", arguments), stopWatch.ElapsedMilliseconds));
         }
+
+        public void ExceptionMethod(string name, Exception ex)
+        {
+            Console.WriteLine("Exception");
+        }
     }
 
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]

@@ -27,6 +27,7 @@ namespace ILRewriter
 
         private const string _preMethodName = "PreMethod";
         private const string _postMethodName = "PostMethod";
+        private const string _exceptionMethodName = "ExceptionMethod";
 
         private const string _procMethodName = "Process";
 
@@ -107,7 +108,33 @@ namespace ILRewriter
                         
                         var tryStart = currentMethod.Body.Instructions[2 * currentMethod.CustomAttributes.Count];
                         var beforeReturnInstruction = Instruction.Create(OpCodes.Nop);
+
                         ilProcessor.InsertBefore(returnInstruction, beforeReturnInstruction);
+
+                        //var afterExceptionInstruction = Instruction.Create(OpCodes.Nop);
+                        //ilProcessor.InsertBefore(returnInstruction, afterExceptionInstruction);
+                        //
+                        //var beforeExceptionInstruction = Instruction.Create(OpCodes.Nop);
+                        //ilProcessor.InsertBefore(afterExceptionInstruction, beforeExceptionInstruction);
+                        //
+                        //
+                        //currentAttribute = 0;
+                        //foreach (var att in currentMethod.CustomAttributes)
+                        //{
+                        //    var exceptionMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _exceptionMethodName);
+                        //    if (exceptionMethod != null)
+                        //    {
+                        //        ilProcessor.InsertBefore(afterExceptionInstruction, ilProcessor.Create(OpCodes.Ldloc, currentAttribute));
+                        //        currentAttribute++;
+                        //        AddInterceptCall(ilProcessor, currentMethod, exceptionMethod, att, afterExceptionInstruction);
+                        //    }
+                        //}
+
+                        var afterPostInstruction = Instruction.Create(OpCodes.Nop);
+                        ilProcessor.InsertBefore(returnInstruction, afterPostInstruction);
+
+                        var beforePostInstruction = Instruction.Create(OpCodes.Nop);
+                        ilProcessor.InsertBefore(afterPostInstruction, beforePostInstruction);
 
                         currentAttribute = 0;
                         foreach (var att in currentMethod.CustomAttributes)
@@ -115,23 +142,37 @@ namespace ILRewriter
                             var postMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _postMethodName);
                             if (postMethod != null)
                             {
-                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Ldloc, currentAttribute));
+                                ilProcessor.InsertBefore(afterPostInstruction, ilProcessor.Create(OpCodes.Ldloc, currentAttribute));
                                 currentAttribute++;
-                                AddInterceptCall(ilProcessor, currentMethod, postMethod, att, returnInstruction);
+                                AddInterceptCall(ilProcessor, currentMethod, postMethod, att, afterPostInstruction);
                             }
                         }
 
                         ilProcessor.InsertBefore(returnInstruction, Instruction.Create(OpCodes.Endfinally));
+
+
+
+                        //var catchHandler = new ExceptionHandler(ExceptionHandlerType.Catch)
+                        //{
+                        //    TryStart = tryStart,
+                        //    TryEnd = beforeExceptionInstruction,
+                        //    HandlerStart = beforeExceptionInstruction,
+                        //    HandlerEnd = beforePostInstruction,
+                        //    CatchType = module.Import(typeof(Exception))
+                        //};
+                        //
+                        //currentMethod.Body.ExceptionHandlers.Add(catchHandler);
+                        //currentMethod.Body.InitLocals = true;
                         
-                        var handler = new ExceptionHandler(ExceptionHandlerType.Finally)
+                        var finallyHandler = new ExceptionHandler(ExceptionHandlerType.Finally)
                         {
                             TryStart = tryStart,
-                            TryEnd = beforeReturnInstruction,
-                            HandlerStart = beforeReturnInstruction,
+                            TryEnd = beforePostInstruction,
+                            HandlerStart = beforePostInstruction,
                             HandlerEnd = returnInstruction,
                         };
                         
-                        currentMethod.Body.ExceptionHandlers.Add(handler);
+                        currentMethod.Body.ExceptionHandlers.Add(finallyHandler);
                         currentMethod.Body.InitLocals = true;                        
                     }
                 }
