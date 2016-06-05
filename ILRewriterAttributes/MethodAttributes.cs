@@ -29,8 +29,6 @@ namespace ILRewriterAttributes
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
     public class MethodWorktimeCall : Attribute
     {
-        Stopwatch stopWatch;
-
         public void PreMethod(string name, params object[] arguments)
         {
             if(DateTime.Now.Hour < 9 || DateTime.Now.Hour > 17)
