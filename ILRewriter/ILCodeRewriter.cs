@@ -88,9 +88,17 @@ namespace ILRewriter
                             var getMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _getMethodName);
                             if (getMethod != null)
                             {
+
+                                currentMethod.Body.InitLocals = true;
+                                var temp = new VariableDefinition("temp", property.PropertyType);
+                                currentMethod.Body.Variables.Add(temp);
+
+                               // ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Starg, 1));
+
                                 ilProcessor.InsertBefore(returnInstruction, ilProcessor.CreateLoadInstruction(property.Name));
 
-                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Ldloc, 0));
+                               // ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Ldloc, 0));
+                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Ldloca_S,  temp));
 
                                 ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Call, currentMethod.Module.ImportReference(getMethod)));
 
@@ -110,11 +118,6 @@ namespace ILRewriter
                 {
                     foreach (var currentMethod in type.Methods)
                     {
-                        if (!currentMethod.HasCustomAttributes)
-                        {
-                            continue;
-                        }
-
                         var ilProcessor = currentMethod.Body.GetILProcessor();
                         var firstUserInstruction = ilProcessor.Body.Instructions.First();
                         
@@ -167,45 +170,47 @@ namespace ILRewriter
                             }
                             currentParameter++;
                         }
-                        
-
-                        var returnInstruction = NormalizeReturns(currentMethod);
-                        
-                        var tryStart = currentMethod.Body.Instructions[2 * currentMethod.CustomAttributes.Count];
-                        var beforeReturnInstruction = Instruction.Create(OpCodes.Nop);
-
-                        ilProcessor.InsertBefore(returnInstruction, beforeReturnInstruction);
-
-                       var afterPostInstruction = Instruction.Create(OpCodes.Nop);
-                        ilProcessor.InsertBefore(returnInstruction, afterPostInstruction);
-
-                        var beforePostInstruction = Instruction.Create(OpCodes.Nop);
-                        ilProcessor.InsertBefore(afterPostInstruction, beforePostInstruction);
-
-                        currentAttribute = 0;
-                        foreach (var att in currentMethod.CustomAttributes)
+                        if (currentMethod.HasCustomAttributes)
                         {
-                            var postMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _postMethodName);
-                            if (postMethod != null)
+
+                            var returnInstruction = NormalizeReturns(currentMethod);
+
+                            var tryStart = currentMethod.Body.Instructions[2 * currentMethod.CustomAttributes.Count];
+                            var beforeReturnInstruction = Instruction.Create(OpCodes.Nop);
+
+                            ilProcessor.InsertBefore(returnInstruction, beforeReturnInstruction);
+
+                            var afterPostInstruction = Instruction.Create(OpCodes.Nop);
+                            ilProcessor.InsertBefore(returnInstruction, afterPostInstruction);
+
+                            var beforePostInstruction = Instruction.Create(OpCodes.Nop);
+                            ilProcessor.InsertBefore(afterPostInstruction, beforePostInstruction);
+
+                            currentAttribute = 0;
+                            foreach (var att in currentMethod.CustomAttributes)
                             {
-                                ilProcessor.InsertBefore(afterPostInstruction, ilProcessor.Create(OpCodes.Ldloc, currentAttribute));
-                                currentAttribute++;
-                                AddInterceptCall(ilProcessor, currentMethod, postMethod, att, afterPostInstruction);
+                                var postMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _postMethodName);
+                                if (postMethod != null)
+                                {
+                                    ilProcessor.InsertBefore(afterPostInstruction, ilProcessor.Create(OpCodes.Ldloc, currentAttribute));
+                                    currentAttribute++;
+                                    AddInterceptCall(ilProcessor, currentMethod, postMethod, att, afterPostInstruction);
+                                }
                             }
-                        }
 
-                        ilProcessor.InsertBefore(returnInstruction, Instruction.Create(OpCodes.Endfinally));
-                                                
-                        var finallyHandler = new ExceptionHandler(ExceptionHandlerType.Finally)
-                        {
-                            TryStart = tryStart,
-                            TryEnd = beforePostInstruction,
-                            HandlerStart = beforePostInstruction,
-                            HandlerEnd = returnInstruction,
-                        };
-                        
-                        currentMethod.Body.ExceptionHandlers.Add(finallyHandler);
-                        currentMethod.Body.InitLocals = true;                        
+                            ilProcessor.InsertBefore(returnInstruction, Instruction.Create(OpCodes.Endfinally));
+
+                            var finallyHandler = new ExceptionHandler(ExceptionHandlerType.Finally)
+                            {
+                                TryStart = tryStart,
+                                TryEnd = beforePostInstruction,
+                                HandlerStart = beforePostInstruction,
+                                HandlerEnd = returnInstruction,
+                            };
+
+                            currentMethod.Body.ExceptionHandlers.Add(finallyHandler);
+                            currentMethod.Body.InitLocals = true;
+                        }                 
                     }
                 }
             }
