@@ -69,8 +69,8 @@ namespace ILRewriter
                             if (setMethod != null)
                             {
                                 ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.CreateLoadInstruction(property.Name));
-                            
-                                ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Ldarg, 0));
+
+                                ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Ldarga_S, currentMethod.Parameters[0]));
                         
                                 ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Call, currentMethod.Module.ImportReference(setMethod)));
                         
