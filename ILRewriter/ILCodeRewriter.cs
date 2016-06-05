@@ -159,8 +159,8 @@ namespace ILRewriter
                                 {
                                     ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.CreateLoadInstruction(currentMethod.Name));
                                     ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.CreateLoadInstruction(para.Name));
-                                    
-                                    ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Ldarg, currentParameter));
+
+                                    ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Ldarga_S, para));
 
                                     ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Call, currentMethod.Module.ImportReference(processMeth)));
                                 }

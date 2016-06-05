@@ -9,7 +9,7 @@ namespace ILRewriterAttributes
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     public class NotNull : Attribute
     {
-        public static void Process(string methodName, string name, object value)
+        public static void Process(string methodName, string name, ref object value)
         {
             if (value == null)
             {
@@ -21,7 +21,7 @@ namespace ILRewriterAttributes
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     public class NotNullOrEmpty : Attribute
     {
-        public static void Process(string methodName, string name, object value)
+        public static void Process(string methodName, string name, ref object value)
         {
             if (value != null)
             {
@@ -39,7 +39,7 @@ namespace ILRewriterAttributes
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     public class GreaterThanZero : Attribute
     {
-        public static void Process(string methodName, string name, object value)
+        public static void Process(string methodName, string name, ref object value)
         {
             if (value != null)
             {
@@ -57,7 +57,7 @@ namespace ILRewriterAttributes
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     public class GreaterOrEqualZero : Attribute
     {
-        public static void Process(string methodName, string name, object value)
+        public static void Process(string methodName, string name, ref object value)
         {
             if (value != null)
             {
@@ -75,7 +75,7 @@ namespace ILRewriterAttributes
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     public class LesserThanZero : Attribute
     {
-        public static void Process(string methodName, string name, object value)
+        public static void Process(string methodName, string name, ref object value)
         {
             if (value != null)
             {
@@ -93,7 +93,7 @@ namespace ILRewriterAttributes
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     public class LesserOrEqualZero : Attribute
     {
-        public static void Process(string methodName, string name, object value)
+        public static void Process(string methodName, string name, ref object value)
         {
             if (value != null)
             {
@@ -111,7 +111,7 @@ namespace ILRewriterAttributes
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     public class EmailValidator : Attribute
     {
-        public static void Process(string methodName, string name, object value)
+        public static void Process(string methodName, string name, ref object value)
         {
             if (value != null)
             {
@@ -129,7 +129,7 @@ namespace ILRewriterAttributes
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     public class Base64Validator : Attribute
     {
-        public static void Process(string methodName, string name, object value)
+        public static void Process(string methodName, string name, ref object value)
         {
             if (value != null)
             {
