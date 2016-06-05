@@ -59,7 +59,7 @@ To process parameters, you just have to define a custom attribute (or use the de
     [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
     public class NotNull : Attribute
     {
-        public static void Process(string methodName, string name, object value)
+        public static void Process(string methodName, string name, ref object value)
         {
             if(value == null)
             {
@@ -95,7 +95,7 @@ To process properties, you just have to define a custom attribute (or use the de
             }
         }
 
-        public static void Set(string propertyName, object value)
+        public static void Set(string propertyName, ref object value)
         {
             if (value == null)
             {
