@@ -9,6 +9,21 @@ namespace ILRewriterDemo
 {
     class Program
     {
+
+        private string dataString = "data";
+        [PropertyLogging, PropertyCall]
+        public string DataString
+        {
+            get
+            {
+                return dataString;
+            }
+            set
+            {
+                dataString = value;
+            }
+        }
+
         static void Main(string[] args)
         {
             DoSomething(null, 4);

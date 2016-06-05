@@ -31,10 +31,85 @@ namespace ILRewriter
 
         private const string _procMethodName = "Process";
 
+        private const string _getMethodName = "Get";
+        private const string _setMethodName = "Set";
+
         public ILCodeRewriter(string assemblyPath)
         {
             _assemblyPath = assemblyPath;
             _assemblyDefinition = AssemblyDefinition.ReadAssembly(assemblyPath);
+        }
+
+        public void RewriteProperties()
+        {
+            foreach (var module in _assemblyDefinition.Modules)
+            {
+                foreach (var type in module.Types)
+                {
+                    foreach (var property in type.Properties)
+                    {
+                        if (!property.HasCustomAttributes)
+                        {
+                            continue;
+                        }
+
+                        var currentMethod = property.SetMethod;
+                        var ilProcessor = currentMethod.Body.GetILProcessor();
+                        var firstUserInstruction = ilProcessor.Body.Instructions.First();
+                        var returnInstruction = ilProcessor.Body.Instructions.Last();
+
+                        foreach (var att in property.CustomAttributes)
+                        {
+                            ((BaseAssemblyResolver)((MetadataResolver)att.AttributeType.Module.MetadataResolver).AssemblyResolver).AddSearchDirectory(System.IO.Path.GetDirectoryName(_assemblyPath));
+                        }
+
+                        foreach (var att in property.CustomAttributes)
+                        {
+                            var getMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _setMethodName);
+                            if (getMethod != null)
+                            {
+                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.CreateLoadInstruction(property.Name));
+                            
+                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Ldarg, 1));
+                        
+                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Call, currentMethod.Module.ImportReference(getMethod)));
+                        
+                            }
+                        }
+
+                        currentMethod = property.GetMethod;
+                        ilProcessor = currentMethod.Body.GetILProcessor();
+                        firstUserInstruction = ilProcessor.Body.Instructions.First();
+                        returnInstruction = ilProcessor.Body.Instructions.Last();
+
+                        currentMethod.Body.InitLocals = true;
+                        var xf = new VariableDefinition(currentMethod.Module.TypeSystem.String);
+                        currentMethod.Body.Variables.Add(xf);
+
+                        ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Newobj,  currentMethod.Module.Import(typeof(string).DeclaringMethod)));
+
+                        ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Stloc, 0));
+
+                        //foreach (var att in property.CustomAttributes)
+                        //{
+                        //    var getMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _getMethodName);
+                        //    if (getMethod != null)
+                        //    {
+                        //        ilProcessor.InsertBefore(returnInstruction, ilProcessor.CreateLoadInstruction(property.Name));
+                        //    
+                        //        ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Ldarg, 0));
+                        //
+                        //        ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Call, currentMethod.Module.ImportReference(getMethod)));
+                        //
+                        //    }
+                        //}
+                        //ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Ldarg, 1));
+                        //ilProcessor.Body.Instructions.Remove(returnInstruction);
+
+
+                    }
+                }
+            }
         }
 
         public void RewriteMethods()

@@ -20,6 +20,7 @@ namespace ILRewriter
             var rewriter = new ILCodeRewriter(args[0]);
 
             rewriter.RewriteMethods();
+            rewriter.RewriteProperties();
 
             rewriter.Reweave();
         }
