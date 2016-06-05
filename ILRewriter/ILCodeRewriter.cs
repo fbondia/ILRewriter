@@ -68,11 +68,11 @@ namespace ILRewriter
                             var getMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _setMethodName);
                             if (getMethod != null)
                             {
-                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.CreateLoadInstruction(property.Name));
+                                ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.CreateLoadInstruction(property.Name));
                             
-                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Ldarg, 1));
+                                ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Ldarg, 1));
                         
-                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Call, currentMethod.Module.ImportReference(getMethod)));
+                                ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Call, currentMethod.Module.ImportReference(getMethod)));
                         
                             }
                         }
@@ -82,13 +82,13 @@ namespace ILRewriter
                         firstUserInstruction = ilProcessor.Body.Instructions.First();
                         returnInstruction = ilProcessor.Body.Instructions.Last();
 
-                        currentMethod.Body.InitLocals = true;
-                        var xf = new VariableDefinition(currentMethod.Module.TypeSystem.String);
-                        currentMethod.Body.Variables.Add(xf);
-
-                        ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Newobj,  currentMethod.Module.Import(typeof(string).DeclaringMethod)));
-
-                        ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Stloc, 0));
+                        //currentMethod.Body.InitLocals = true;
+                        //var xf = new VariableDefinition(currentMethod.Module.TypeSystem.String);
+                        //currentMethod.Body.Variables.Add(xf);
+                        //
+                        //ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Newobj,  currentMethod.Module.Import(typeof(string).)));
+                        //
+                        //ilProcessor.InsertBefore(firstUserInstruction, ilProcessor.Create(OpCodes.Stloc, 0));
 
                         //foreach (var att in property.CustomAttributes)
                         //{
