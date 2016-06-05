@@ -11,7 +11,7 @@ namespace ILRewriterDemo
     {
 
         private string dataString = "data";
-        [PropertyLogging, PropertyCall]
+        [PropertyLogging, PropertyNotNull]
         public string DataString
         {
             get

@@ -21,16 +21,22 @@ namespace ILRewriterAttributes
     }
 
     [AttributeUsage(AttributeTargets.Property, Inherited = false)]
-    public class PropertyCall : Attribute
+    public class PropertyNotNull : Attribute
     {
         public static void Get(string propertyName, object value)
         {
-            Console.WriteLine(string.Format("Get property with name '{0}' and value '{1}'", propertyName, value.ToString()));
+            if(value == null)
+            {
+                throw new ArgumentNullException(propertyName, string.Format("Property '{0}' Method 'Get' is null.", propertyName));
+            }
         }
 
         public static void Set(string propertyName, object value)
         {
-            Console.WriteLine(string.Format("Set property with name '{0}' and value '{1}'", propertyName, value.ToString()));
+            if (value == null)
+            {
+                throw new ArgumentNullException(propertyName, string.Format("Property '{0}' Method 'Set' is null.", propertyName));
+            }
         }
     }
 }
