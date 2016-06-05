@@ -79,3 +79,48 @@ Now you can add your custom attribute to any parameter in your assembly. (e.g. f
 ```
 
 If you now call ```DoSomething(null, 3)``` (first parameter is null), a ArgumentNullException will be thrown (according to the custom  attribute).
+
+###Property Attributes
+To process properties, you just have to define a custom attribute (or use the default ones from the library):
+
+```csharp
+    [AttributeUsage(AttributeTargets.Property, Inherited = false)]
+    public class PropertyNotNull : Attribute
+    {
+        public static void Get(string propertyName, object value)
+        {
+            if(value == null)
+            {
+                throw new ArgumentNullException(propertyName, string.Format("Property '{0}' Method 'Get' is null.", propertyName));
+            }
+        }
+
+        public static void Set(string propertyName, object value)
+        {
+            if (value == null)
+            {
+                throw new ArgumentNullException(propertyName, string.Format("Property '{0}' Method 'Set' is null.", propertyName));
+            }
+        }
+    }
+```
+
+Now you can add your custom attribute to any property in your assembly. (e.g. for null checking):
+
+```csharp
+        private string dataString = "data";
+        [PropertyNotNull]
+        public string DataString
+        {
+            get
+            {
+                return dataString;
+            }
+            set
+            {
+                dataString = value;
+            }
+        }
+```
+
+Now, on every ```Get``` or ```Set``` call, the value will be validated.
