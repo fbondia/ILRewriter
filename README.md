@@ -1,5 +1,5 @@
 # ILRewriter
-Rewrites .NET IL to support AOP features like custom attributes (using Mono.Cecil).
+Rewrites .NET IL to support AOP features like custom attributes.
 
 ###Configuration
 
