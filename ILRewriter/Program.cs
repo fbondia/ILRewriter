@@ -10,7 +10,16 @@ namespace ILRewriter
     {
         static void Main(string[] args)
         {
-            if(args.Length == 0)
+            AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(
+            (s, a) => {
+                if (a.Name.ToLower().Contains("cecil"))
+                {
+                    return System.Reflection.Assembly.Load(Properties.Resources.Mono_Cecil);
+                }
+                return null;
+            });
+
+            if (args.Length == 0)
             {
                 Console.WriteLine("Please supply the assembly to rewrite as first parameter.");
                 Console.WriteLine("e.g ILRewriter.exe C:\assembly.dll");
