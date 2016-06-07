@@ -9,7 +9,7 @@ namespace ILRewriterAttributes
     [AttributeUsage(AttributeTargets.Property, Inherited = false)]
     public class PropertyLogging : Attribute
     {
-        public static void Get(string propertyName, object value)
+        public static void Get(string propertyName, ref object value)
         {
             Console.WriteLine(string.Format("Get property with name '{0}' and value '{1}'", propertyName, value.ToString()));
         }
@@ -23,7 +23,7 @@ namespace ILRewriterAttributes
     [AttributeUsage(AttributeTargets.Property, Inherited = false)]
     public class PropertyNotNull : Attribute
     {
-        public static void Get(string propertyName, object value)
+        public static void Get(string propertyName, ref object value)
         {
             if(value == null)
             {

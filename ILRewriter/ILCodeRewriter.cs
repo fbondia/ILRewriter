@@ -88,20 +88,17 @@ namespace ILRewriter
                             var getMethod = att.AttributeType.Resolve().Methods.FirstOrDefault(x => x.Name == _getMethodName);
                             if (getMethod != null)
                             {
-
-                                currentMethod.Body.InitLocals = true;
-                                var temp = new VariableDefinition("temp", property.PropertyType);
-                                currentMethod.Body.Variables.Add(temp);
-
-                               // ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Starg, 1));
-
-                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.CreateLoadInstruction(property.Name));
-
-                               // ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Ldloc, 0));
-                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Ldloca_S,  temp));
-
-                                ilProcessor.InsertBefore(returnInstruction, ilProcessor.Create(OpCodes.Call, currentMethod.Module.ImportReference(getMethod)));
-
+                                getMethod.Body.InitLocals = true;
+                                var tempVar = new VariableDefinition("temp", module.TypeSystem.String);
+                                getMethod.Body.Variables.Add(tempVar);
+                                ilProcessor.Body.Instructions.RemoveAt(currentMethod.Body.Instructions.Count-2);
+                                var last = currentMethod.Body.Instructions.Last();
+                                
+                                ilProcessor.InsertBefore(last, ilProcessor.Create(OpCodes.Ldstr, property.Name));
+                                ilProcessor.InsertBefore(last, ilProcessor.Create(OpCodes.Ldloca_S, tempVar));
+                                ilProcessor.InsertBefore(last, ilProcessor.Create(OpCodes.Call, currentMethod.Module.ImportReference(getMethod)));
+                                ilProcessor.InsertBefore(last, ilProcessor.Create(OpCodes.Ldloc, tempVar));
+                                
                             }
                         }
 
