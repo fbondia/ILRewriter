@@ -87,7 +87,7 @@ To process properties, you just have to define a custom attribute (or use the de
     [AttributeUsage(AttributeTargets.Property, Inherited = false)]
     public class PropertyNotNull : Attribute
     {
-        public static void Get(string propertyName, object value)
+        public static void Get(string propertyName, ref object value)
         {
             if(value == null)
             {
